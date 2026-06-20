@@ -4,7 +4,7 @@ import tempfile
 import os
 import sounddevice as sd
 import numpy as np
-from mistralai.client import Mistral
+from mistralai import Mistral
 
 from config import (
     MISTRAL_API_KEY,
@@ -94,23 +94,5 @@ class VoiceEngine:
     def speak(self, text):
         if not text:
             return
-        print(f"[Voix] {text}")
-        try:
-            res = self.client.audio.speech.complete(
-                model=TTS_MODEL,
-                input=text,
-                voice=TTS_VOICE,
-            )
-            if hasattr(res, "data") and res.data:
-                audio_bytes = res.data
-            elif isinstance(res, bytes):
-                audio_bytes = res
-            else:
-                raise ValueError("Format reponse TTS inattendu")
-            tmp = tempfile.NamedTemporaryFile(suffix=".wav", delete=False)
-            tmp.write(audio_bytes)
-            tmp.close()
-            os.system(f"afplay {tmp.name} && rm {tmp.name}")
-        except Exception as e:
-            print(f"[TTS erreur, fallback say] {e}")
-            os.system(f"say '{text}'")
+        print(f"[Agent] {text}")
+        os.system(f"say '{text}'")
