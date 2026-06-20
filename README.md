@@ -42,8 +42,8 @@
 
 ```bash
 # Clone the repository
-git clone https://github.com/AZERDSQ/computer-use.git
-cd computer-use
+git clone https://github.com/AZERDSQ131/VoxAgent.git
+cd voxagent
 
 # Set up your API key
 cp .env.example .env
@@ -116,7 +116,7 @@ Bash execution is sandboxed with two layers of protection:
 ## Project Structure
 
 ```
-computer-use/
+voxagent/
 ├── .env.example       # Environment template
 ├── .gitignore
 ├── README.md
