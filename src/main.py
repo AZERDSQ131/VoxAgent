@@ -1,6 +1,7 @@
 import sys
 import signal
 import time
+import threading
 
 from voice import VoiceEngine
 from agent import Agent
@@ -12,12 +13,6 @@ class VoiceAgentApp:
         self.voice = VoiceEngine()
         self.agent = Agent()
 
-    def on_recording_start(self):
-        pass
-
-    def on_recording_stop(self):
-        pass
-
     def run(self):
         signal.signal(signal.SIGINT, self._signal_handler)
         signal.signal(signal.SIGTERM, self._signal_handler)
@@ -26,13 +21,16 @@ class VoiceAgentApp:
 
         while self.running:
             try:
-                cmd = input("\n[Enter] Parler  |  [taper] Texte  |  stop/quit: ").strip()
+                cmd = input("\n[Entree] Parler  |  [taper] Texte  |  stop/quit: ").strip()
 
                 if not cmd:
-                    audio = self.voice.record(
-                        callback_start=self.on_recording_start,
-                        callback_stop=self.on_recording_stop,
-                    )
+                    stop_event = threading.Event()
+                    t = threading.Thread(target=self.voice.record, args=(stop_event,))
+                    t.start()
+                    input("")
+                    stop_event.set()
+                    t.join()
+                    audio = self.voice.audio_data
                     if audio is None:
                         self.voice.speak("Je n'ai pas entendu de son.")
                         continue

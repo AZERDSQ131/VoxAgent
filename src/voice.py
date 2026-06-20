@@ -2,6 +2,7 @@ import io
 import wave
 import tempfile
 import os
+import threading
 import sounddevice as sd
 import numpy as np
 from mistralai import Mistral
@@ -26,62 +27,38 @@ class VoiceEngine:
             raise ValueError("MISTRAL_API_KEY non definie. Creez un fichier .env")
         self.client = Mistral(api_key=MISTRAL_API_KEY)
 
-    def record(self, callback_start=None, callback_stop=None):
-        print("[Parle maintenant...]")
-        if callback_start:
-            callback_start()
-
-        audio_data = []
+    def record(self, stop_event):
+        self.audio_data = None
+        chunks = []
         stream = sd.InputStream(
             samplerate=SAMPLE_RATE,
             channels=CHANNELS,
             dtype=DTYPE,
         )
         stream.start()
+        print("[Parle maintenant... (appuie sur Entree pour arreter)]")
 
-        silent_chunks = 0
-        max_silent = int(SAMPLE_RATE / 512 * 1.5)
-        started = False
-        chunks_recorded = 0
-        max_chunks = int(SAMPLE_RATE / 512 * RECORDING_TIMEOUT)
+        while not stop_event.is_set():
+            chunk, _ = stream.read(512)
+            chunks.append(chunk.copy())
 
-        try:
-            while chunks_recorded < max_chunks:
-                chunk, _ = stream.read(512)
-                amplitude = np.max(np.abs(chunk))
-                if amplitude > SILENCE_THRESHOLD:
-                    if not started:
-                        started = True
-                    silent_chunks = 0
-                    audio_data.append(chunk.copy())
-                elif started:
-                    silent_chunks += 1
-                    audio_data.append(chunk.copy())
-                    if silent_chunks > max_silent:
-                        break
-                chunks_recorded += 1
-        finally:
-            stream.stop()
-            stream.close()
+        stream.stop()
+        stream.close()
 
-        if not audio_data:
+        if not chunks:
             print("[Aucun son detecte]")
-            return None
+            return
 
-        audio_array = np.concatenate(audio_data, axis=0)
+        audio_array = np.concatenate(chunks, axis=0)
         wav_buffer = io.BytesIO()
         with wave.open(wav_buffer, "wb") as wf:
             wf.setnchannels(CHANNELS)
             wf.setsampwidth(2)
             wf.setframerate(SAMPLE_RATE)
             wf.writeframes(audio_array.tobytes())
-        wav_bytes = wav_buffer.getvalue()
 
+        self.audio_data = wav_buffer.getvalue()
         print("[Enregistrement termine]")
-        if callback_stop:
-            callback_stop()
-
-        return wav_bytes
 
     def transcribe(self, audio_bytes):
         res = self.client.audio.transcriptions.complete(
